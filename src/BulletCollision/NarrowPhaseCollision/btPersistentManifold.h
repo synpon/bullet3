@@ -4,8 +4,8 @@ Copyright (c) 2003-2006 Erwin Coumans  http://continuousphysics.com/Bullet/
 
 This software is provided 'as-is', without any express or implied warranty.
 In no event will the authors be held liable for any damages arising from the use of this software.
-Permission is granted to anyone to use this software for any purpose, 
-including commercial applications, and to alter it and redistribute it freely, 
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it freely,
 subject to the following restrictions:
 
 1. The origin of this software must not be misrepresented; you must not claim that you wrote the original software. If you use this software in a product, an acknowledgment in the product documentation would be appreciated but is not required.
@@ -46,8 +46,8 @@ enum btContactManifoldTypes
 ///Those contact points are created by the collision narrow phase.
 ///The cache can be empty, or hold 1,2,3 or 4 points. Some collision algorithms (GJK) might only add one point at a time.
 ///updates/refreshes old contact points, and throw them away if necessary (distance becomes too large)
-///reduces the cache to 4 points, when more then 4 points are added, using following rules:
-///the contact point with deepest penetration is always kept, and it tries to maximuze the area covered by the points
+///reduces the cache to 4 points, when more than 4 points are added, using following rules:
+///the contact point with deepest penetration is always kept, and it tries to maximize the area covered by the points
 ///note that some pairs of objects might have more then one contact manifold.
 
 
@@ -66,7 +66,7 @@ ATTRIBUTE_ALIGNED128( class) btPersistentManifold : public btTypedObject
 	btScalar	m_contactBreakingThreshold;
 	btScalar	m_contactProcessingThreshold;
 
-	
+
 	/// sort cached points so most isolated points come first
 	int	sortCachedPoints(const btManifoldPoint& pt);
 
@@ -105,7 +105,7 @@ public:
 #ifdef DEBUG_PERSISTENCY
 	void	DebugPersistency();
 #endif //
-	
+
 	SIMD_FORCE_INLINE int	getNumContacts() const { return m_cachedPoints;}
 	/// the setNumContacts API is usually not used, except when you gather/fill all contacts manually
 	void setNumContacts(int cachedPoints)
@@ -133,7 +133,7 @@ public:
 	{
 		return m_contactProcessingThreshold;
 	}
-	
+
 	void setContactBreakingThreshold(btScalar contactBreakingThreshold)
 	{
 		m_contactBreakingThreshold = contactBreakingThreshold;
@@ -143,8 +143,8 @@ public:
 	{
 		m_contactProcessingThreshold = contactProcessingThreshold;
 	}
-	
-	
+
+
 
 
 	int getCacheEntry(const btManifoldPoint& newPoint) const;
@@ -157,9 +157,9 @@ public:
 
 		int lastUsedIndex = getNumContacts() - 1;
 //		m_pointCache[index] = m_pointCache[lastUsedIndex];
-		if(index != lastUsedIndex) 
+		if(index != lastUsedIndex)
 		{
-			m_pointCache[index] = m_pointCache[lastUsedIndex]; 
+			m_pointCache[index] = m_pointCache[lastUsedIndex];
 			//get rid of duplicated userPersistentData pointer
 			m_pointCache[lastUsedIndex].m_userPersistentData = 0;
 			m_pointCache[lastUsedIndex].m_appliedImpulse = 0.f;
@@ -183,19 +183,19 @@ public:
 		btScalar	appliedLateralImpulse1 = m_pointCache[insertIndex].m_appliedImpulseLateral1;
 		btScalar	appliedLateralImpulse2 = m_pointCache[insertIndex].m_appliedImpulseLateral2;
 //		bool isLateralFrictionInitialized = m_pointCache[insertIndex].m_lateralFrictionInitialized;
-		
-		
-			
+
+
+
 		btAssert(lifeTime>=0);
 		void* cache = m_pointCache[insertIndex].m_userPersistentData;
-		
+
 		m_pointCache[insertIndex] = newPoint;
 
 		m_pointCache[insertIndex].m_userPersistentData = cache;
 		m_pointCache[insertIndex].m_appliedImpulse = appliedImpulse;
 		m_pointCache[insertIndex].m_appliedImpulseLateral1 = appliedLateralImpulse1;
 		m_pointCache[insertIndex].m_appliedImpulseLateral2 = appliedLateralImpulse2;
-		
+
 		m_pointCache[insertIndex].m_appliedImpulse =  appliedImpulse;
 		m_pointCache[insertIndex].m_appliedImpulseLateral1 = appliedLateralImpulse1;
 		m_pointCache[insertIndex].m_appliedImpulseLateral2 = appliedLateralImpulse2;
@@ -205,11 +205,11 @@ public:
 #else
 		clearUserCache(m_pointCache[insertIndex]);
 		m_pointCache[insertIndex] = newPoint;
-	
+
 #endif
 	}
 
-	
+
 	bool validContactDistance(const btManifoldPoint& pt) const
 	{
 		return pt.m_distance1 <= getContactBreakingThreshold();
@@ -217,7 +217,7 @@ public:
 	/// calculated new worldspace coordinates and depth, and reject points that exceed the collision margin
 	void	refreshContactPoints(  const btTransform& trA,const btTransform& trB);
 
-	
+
 	SIMD_FORCE_INLINE	void	clearManifold()
 	{
 		int i;
