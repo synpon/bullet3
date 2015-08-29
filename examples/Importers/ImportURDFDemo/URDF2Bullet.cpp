@@ -10,6 +10,7 @@
 #include "URDFImporterInterface.h"
 #include "MultiBodyCreationInterface.h"
 #include <string>
+
 static int bodyCollisionFilterGroup=btBroadphaseProxy::CharacterFilter;
 static int bodyCollisionFilterMask=btBroadphaseProxy::AllFilter&(~btBroadphaseProxy::CharacterFilter);
 static bool enableConstraints = true;
@@ -33,33 +34,15 @@ static btVector3 selectColor2()
     return color;
 }
 
-void printTree(const URDFImporterInterface& u2b, int linkIndex, int indentationLevel)
-{
-    btAlignedObjectArray<int> childIndices;
-    u2b.getLinkChildIndices(linkIndex,childIndices);
-
-    int numChildren = childIndices.size();
-
-    indentationLevel+=2;
-    int count = 0;
-    for (int i=0;i<numChildren;i++)
-    {
-        int childLinkIndex = childIndices[i];
-        std::string name = u2b.getLinkName(childLinkIndex);
-        for(int j=0;j<indentationLevel;j++) printf("  "); //indent
-        printf("child(%d).name=%s with childIndex=%d\n",(count++)+1, name.c_str(),childLinkIndex);
-        // first grandchild
-        printTree(u2b,childLinkIndex,indentationLevel);
-    }
-}
 
 
 struct URDF2BulletCachedData
 {
     URDF2BulletCachedData()
-    :m_totalNumJoints1(0),
-    m_currentMultiBodyLinkIndex(-1),
-    m_bulletMultiBody(0)
+    :
+	m_currentMultiBodyLinkIndex(-1),
+	m_bulletMultiBody(0),
+	m_totalNumJoints1(0)
     {
 
     }
@@ -112,11 +95,11 @@ void ComputeTotalNumberOfJoints(const URDFImporterInterface& u2b, URDF2BulletCac
 {
     btAlignedObjectArray<int> childIndices;
     u2b.getLinkChildIndices(linkIndex,childIndices);
-    printf("link %s has %d children\n", u2b.getLinkName(linkIndex).c_str(),childIndices.size());
-    for (int i=0;i<childIndices.size();i++)
-    {
-        printf("child %d has childIndex%d=%s\n",i,childIndices[i],u2b.getLinkName(childIndices[i]).c_str());
-    }
+    //b3Printf("link %s has %d children\n", u2b.getLinkName(linkIndex).c_str(),childIndices.size());
+    //for (int i=0;i<childIndices.size();i++)
+    //{
+    //    b3Printf("child %d has childIndex%d=%s\n",i,childIndices[i],u2b.getLinkName(childIndices[i]).c_str());
+    //}
     cache.m_totalNumJoints1 += childIndices.size();
     for (int i=0;i<childIndices.size();i++)
     {
@@ -162,7 +145,7 @@ void InitURDF2BulletCache(const URDFImporterInterface& u2b, URDF2BulletCachedDat
 
 void ConvertURDF2BulletInternal(const URDFImporterInterface& u2b, MultiBodyCreationInterface& creation, URDF2BulletCachedData& cache, int urdfLinkIndex, const btTransform& parentTransformInWorldSpace, btMultiBodyDynamicsWorld* world1,bool createMultiBody, const char* pathPrefix)
 {
-    printf("start converting/extracting data from URDF interface\n");
+    //b3Printf("start converting/extracting data from URDF interface\n");
 
     btTransform linkTransformInWorldSpace;
     linkTransformInWorldSpace.setIdentity();
@@ -174,9 +157,9 @@ void ConvertURDF2BulletInternal(const URDFImporterInterface& u2b, MultiBodyCreat
     int mbParentIndex = cache.getMbIndexFromUrdfIndex(urdfParentIndex);
     btRigidBody* parentRigidBody = 0;
 
-    std::string name = u2b.getLinkName(urdfLinkIndex);
-    printf("link name=%s urdf link index=%d\n",name.c_str(),urdfLinkIndex);
-    printf("mb link index = %d\n",mbLinkIndex);
+    //std::string name = u2b.getLinkName(urdfLinkIndex);
+    //b3Printf("link name=%s urdf link index=%d\n",name.c_str(),urdfLinkIndex);
+    //b3Printf("mb link index = %d\n",mbLinkIndex);
 
 	btTransform parentLocalInertialFrame;
 	parentLocalInertialFrame.setIdentity();
@@ -185,11 +168,11 @@ void ConvertURDF2BulletInternal(const URDFImporterInterface& u2b, MultiBodyCreat
 
     if (urdfParentIndex==-2)
     {
-        printf("root link has no parent\n");
+        //b3Printf("root link has no parent\n");
     } else
     {
-        printf("urdf parent index = %d\n",urdfParentIndex);
-        printf("mb parent index = %d\n",mbParentIndex);
+        //b3Printf("urdf parent index = %d\n",urdfParentIndex);
+        //b3Printf("mb parent index = %d\n",mbParentIndex);
         parentRigidBody = cache.getRigidBodyFromLink(urdfParentIndex);
 		u2b.getMassAndInertia(urdfParentIndex, parentMass,parentLocalInertiaDiagonal,parentLocalInertialFrame);
 
@@ -285,7 +268,7 @@ void ConvertURDF2BulletInternal(const URDFImporterInterface& u2b, MultiBodyCreat
                     {
                         //todo: adjust the center of mass transform and pivot axis properly
 
-                        printf("Fixed joint (btMultiBody)\n");
+                        //b3Printf("Fixed joint (btMultiBody)\n");
                         btQuaternion rot = offsetInA.inverse().getRotation();//parent2joint.inverse().getRotation();
                         cache.m_bulletMultiBody->setupFixed(mbLinkIndex, mass, localInertiaDiagonal, mbParentIndex,
                                                                rot*offsetInB.getRotation(), offsetInA.getOrigin(),-offsetInB.getOrigin(),disableParentCollision);
@@ -294,22 +277,10 @@ void ConvertURDF2BulletInternal(const URDFImporterInterface& u2b, MultiBodyCreat
 
                     } else
                     {
-                        printf("Fixed joint\n");
-
-                        btMatrix3x3 rm(offsetInA.getBasis());
-                        btScalar y,p,r;
-                        rm.getEulerZYX(y,p,r);
-                        printf("y=%f,p=%f,r=%f\n", y,p,r);
-
-                        //we could also use btFixedConstraint but it has some issues
-                        btGeneric6DofSpring2Constraint* dof6 = creation.allocateGeneric6DofSpring2Constraint(urdfLinkIndex, *parentRigidBody, *linkRigidBody, offsetInA, offsetInB);
-
-                        dof6->setLinearLowerLimit(btVector3(0,0,0));
-                        dof6->setLinearUpperLimit(btVector3(0,0,0));
-
-                        dof6->setAngularLowerLimit(btVector3(0,0,0));
-                        dof6->setAngularUpperLimit(btVector3(0,0,0));
-
+                        //b3Printf("Fixed joint\n");
+						
+						btGeneric6DofSpring2Constraint* dof6 = creation.createFixedJoint(urdfLinkIndex,*parentRigidBody, *linkRigidBody, offsetInA, offsetInB);
+                       
                         if (enableConstraints)
                             world1->addConstraint(dof6,true);
                     }
@@ -330,52 +301,12 @@ void ConvertURDF2BulletInternal(const URDFImporterInterface& u2b, MultiBodyCreat
 
                     } else
                     {
-                        //only handle principle axis at the moment,
-                        //@todo(erwincoumans) orient the constraint for non-principal axis
-                        int principleAxis = jointAxisInJointSpace.closestAxis();
-                        switch (principleAxis)
-                        {
-                            case 0:
-                            {
-                                btGeneric6DofSpring2Constraint* dof6 = creation.allocateGeneric6DofSpring2Constraint(urdfLinkIndex,*parentRigidBody, *linkRigidBody, offsetInA, offsetInB,RO_ZYX);
-                                dof6->setLinearLowerLimit(btVector3(0,0,0));
-                                dof6->setLinearUpperLimit(btVector3(0,0,0));
 
-                                dof6->setAngularUpperLimit(btVector3(-1,0,0));
-                                dof6->setAngularLowerLimit(btVector3(1,0,0));
+						btGeneric6DofSpring2Constraint* dof6 = creation.createRevoluteJoint(urdfLinkIndex,*parentRigidBody, *linkRigidBody, offsetInA, offsetInB,jointAxisInJointSpace,jointLowerLimit, jointUpperLimit);
 
-                                if (enableConstraints)
+						if (enableConstraints)
                                     world1->addConstraint(dof6,true);
-                                break;
-                            }
-                            case 1:
-                            {
-                                btGeneric6DofSpring2Constraint* dof6 = creation.allocateGeneric6DofSpring2Constraint(urdfLinkIndex,*parentRigidBody, *linkRigidBody, offsetInA, offsetInB,RO_XZY);
-                                dof6->setLinearLowerLimit(btVector3(0,0,0));
-                                dof6->setLinearUpperLimit(btVector3(0,0,0));
-
-                                dof6->setAngularUpperLimit(btVector3(0,-1,0));
-                                dof6->setAngularLowerLimit(btVector3(0,1,0));
-
-                                if (enableConstraints)
-                                    world1->addConstraint(dof6,true);
-                                break;
-                            }
-                            case 2:
-                            default:
-                            {
-                                btGeneric6DofSpring2Constraint* dof6 = creation.allocateGeneric6DofSpring2Constraint(urdfLinkIndex,*parentRigidBody, *linkRigidBody, offsetInA, offsetInB,RO_XYZ);
-                                dof6->setLinearLowerLimit(btVector3(0,0,0));
-                                dof6->setLinearUpperLimit(btVector3(0,0,0));
-
-                                dof6->setAngularUpperLimit(btVector3(0,0,-1));
-                                dof6->setAngularLowerLimit(btVector3(0,0,0));
-
-                                if (enableConstraints)
-                                    world1->addConstraint(dof6,true);
-                            }
-                        };
-                        printf("Revolute/Continuous joint\n");
+                        //b3Printf("Revolute/Continuous joint\n");
                     }
                     break;
                 }
@@ -396,43 +327,20 @@ void ConvertURDF2BulletInternal(const URDFImporterInterface& u2b, MultiBodyCreat
 
                     } else
                     {
-                        btGeneric6DofSpring2Constraint* dof6 = creation.allocateGeneric6DofSpring2Constraint(urdfLinkIndex,*parentRigidBody, *linkRigidBody, offsetInA, offsetInB);
-                        //todo(erwincoumans) for now, we only support principle axis along X, Y or Z
-                        int principleAxis = jointAxisInJointSpace.closestAxis();
-                        switch (principleAxis)
-                        {
-                            case 0:
-                            {
-                                dof6->setLinearLowerLimit(btVector3(jointLowerLimit,0,0));
-                                dof6->setLinearUpperLimit(btVector3(jointUpperLimit,0,0));
-                                break;
-                            }
-                            case 1:
-                            {
-                                dof6->setLinearLowerLimit(btVector3(0,jointLowerLimit,0));
-                                dof6->setLinearUpperLimit(btVector3(0,jointUpperLimit,0));
-                                break;
-                            }
-                            case 2:
-                            default:
-                            {
-                                dof6->setLinearLowerLimit(btVector3(0,0,jointLowerLimit));
-                                dof6->setLinearUpperLimit(btVector3(0,0,jointUpperLimit));
-                            }
-                        };
-
-                        dof6->setAngularLowerLimit(btVector3(0,0,0));
-                        dof6->setAngularUpperLimit(btVector3(0,0,0));
+                        
+						btGeneric6DofSpring2Constraint* dof6 = creation.createPrismaticJoint(urdfLinkIndex,*parentRigidBody, *linkRigidBody, offsetInA, offsetInB,jointAxisInJointSpace,jointLowerLimit,jointUpperLimit);
+						
+                       
                         if (enableConstraints)
                             world1->addConstraint(dof6,true);
 
-                        printf("Prismatic\n");
+                        //b3Printf("Prismatic\n");
                     }
                     break;
                 }
                 default:
                 {
-                    printf("Error: unsupported joint type in URDF (%d)\n", jointType);
+                    //b3Printf("Error: unsupported joint type in URDF (%d)\n", jointType);
 					btAssert(0);
                 }
             }
@@ -512,7 +420,11 @@ void ConvertURDF2Bullet(const URDFImporterInterface& u2b, MultiBodyCreationInter
 		mb->finalizeMultiDof();
 
 		mb->setBaseWorldTransform(rootTransformInWorldSpace);
-
+		btAlignedObjectArray<btQuaternion> scratch_q;
+		btAlignedObjectArray<btVector3> scratch_m;
+		mb->forwardKinematics(scratch_q,scratch_m);
+		mb->updateCollisionObjectWorldTransforms(scratch_q,scratch_m);
+		
 		world1->addMultiBody(mb);
 	}
 }

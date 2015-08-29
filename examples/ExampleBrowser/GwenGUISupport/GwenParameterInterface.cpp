@@ -129,7 +129,6 @@ void GwenParameterInterface::setSliderValue(int sliderIndex, double sliderValue)
 
 void GwenParameterInterface::registerButtonParameter(ButtonParams& params)
 {
-	Gwen::Controls::TextBox* label = new Gwen::Controls::TextBox(m_gwenInternalData->m_demoPage->GetPage());
 	
 	Gwen::Controls::Button* button = new Gwen::Controls::Button(m_gwenInternalData->m_demoPage->GetPage());
 	MyButtonEventHandler* handler = new MyButtonEventHandler(params.m_callback,params.m_buttonId,params.m_userPointer);
@@ -139,7 +138,9 @@ void GwenParameterInterface::registerButtonParameter(ButtonParams& params)
 	m_paramInternalData->m_buttons.push_back(button);
 	m_paramInternalData->m_buttonEventHandlers.push_back(handler);
 
-	button->SetPos( 10, m_gwenInternalData->m_curYposition );
+	button->SetPos( 5, m_gwenInternalData->m_curYposition );
+	button->SetWidth(220);
+	
 	m_gwenInternalData->m_curYposition+=22;
 
 }
@@ -151,7 +152,7 @@ void GwenParameterInterface::registerSliderFloatParameter(SliderParams& params)
 	//m_data->m_myControls.push_back(label);
 	label->SetText( params.m_name);
 	label->SetPos( 10, 10 + 25 );
-	label->SetWidth(110);
+	label->SetWidth(210);
 	label->SetPos(10,m_gwenInternalData->m_curYposition);
 	m_gwenInternalData->m_curYposition+=22;
 
@@ -159,7 +160,7 @@ void GwenParameterInterface::registerSliderFloatParameter(SliderParams& params)
 	m_paramInternalData->m_sliders.push_back(pSlider);
 	//m_data->m_myControls.push_back(pSlider);
 	pSlider->SetPos( 10, m_gwenInternalData->m_curYposition );
-	pSlider->SetSize( 100, 20 );
+	pSlider->SetSize( 200, 20 );
 	pSlider->SetRange( params.m_minVal, params.m_maxVal);
 	pSlider->SetNotchCount(128);//float(params.m_maxVal-params.m_minVal)/100.f);
 	pSlider->SetClampToNotches( params.m_clampToNotches );
@@ -187,6 +188,22 @@ void GwenParameterInterface::syncParameters()
 
 void GwenParameterInterface::removeAllParameters()
 {
+	for (int i=0;i<m_paramInternalData->m_buttons.size();i++)
+	{
+		delete m_paramInternalData->m_buttons[i];
+	}
+	m_paramInternalData->m_buttons.clear();
+	
+	for (int i=0;i<m_paramInternalData->m_buttonEventHandlers.size();i++)
+	{
+		delete m_paramInternalData->m_buttonEventHandlers[i];
+	}
+	m_paramInternalData->m_buttonEventHandlers.clear();
+	
+	
+	m_gwenInternalData->m_curYposition+=22;
+
+	
 	for (int i=0;i<m_paramInternalData->m_sliders.size();i++)
 	{
 		delete m_paramInternalData->m_sliders[i];
