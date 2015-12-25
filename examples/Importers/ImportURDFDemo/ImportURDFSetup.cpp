@@ -140,7 +140,7 @@ ImportUrdfSetup::ImportUrdfSetup(struct GUIHelperInterface* helper, int option, 
 		{
 			count=0;
 		}
-		sprintf(m_fileName,gFileNameArray[count++].c_str());
+		sprintf(m_fileName,"%s",gFileNameArray[count++].c_str());
 	}
 }
 
@@ -185,7 +185,7 @@ void ImportUrdfSetup::initPhysics()
 {
 
 	int upAxis = 2;
-	m_guiHelper->setUpAxis(2);
+	m_guiHelper->setUpAxis(upAxis);
 
 	this->createEmptyDynamicsWorld();
 	//m_dynamicsWorld->getSolverInfo().m_numIterations = 100;
@@ -356,7 +356,7 @@ void ImportUrdfSetup::initPhysics()
 
 
 
-		bool createGround=false;
+		bool createGround=true;
 		if (createGround)
 		{
 			btVector3 groundHalfExtents(20,20,20);
@@ -367,7 +367,7 @@ void ImportUrdfSetup::initPhysics()
 			m_guiHelper->createCollisionShapeGraphicsObject(box);
 			btTransform start; start.setIdentity();
 			btVector3 groundOrigin(0,0,0);
-			groundOrigin[upAxis]=-2;//.5;
+			groundOrigin[upAxis]=-2.5;
 			start.setOrigin(groundOrigin);
 			btRigidBody* body =  createRigidBody(0,start,box);
 			//m_dynamicsWorld->removeRigidBody(body);

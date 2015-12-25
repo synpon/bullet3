@@ -4,6 +4,8 @@
 
 //this is a very experimental draft of commands. We will iterate on this API (commands, arguments etc)
 
+#include "SharedMemoryPublic.h"
+
 #ifdef __GNUC__
 	#include <stdint.h>
 	typedef int32_t smInt32_t;
@@ -22,57 +24,34 @@
 	typedef unsigned long long int smUint64_t;
 #endif
 
-enum EnumSharedMemoryClientCommand
-{
-    CMD_LOAD_URDF,
-	CMD_SEND_BULLET_DATA_STREAM,
-	CMD_CREATE_BOX_COLLISION_SHAPE,
-//	CMD_DELETE_BOX_COLLISION_SHAPE,
-//	CMD_CREATE_RIGID_BODY,
-//	CMD_DELETE_RIGID_BODY,
-    CMD_CREATE_SENSOR,///enable or disable joint feedback for force/torque sensors
-//    CMD_REQUEST_SENSOR_MEASUREMENTS,//see CMD_REQUEST_ACTUAL_STATE/CMD_ACTUAL_STATE_UPDATE_COMPLETED
-	CMD_INIT_POSE,
-	CMD_SEND_PHYSICS_SIMULATION_PARAMETERS,
-	CMD_SEND_DESIRED_STATE,//todo: reconsider naming, for example SET_JOINT_CONTROL_VARIABLE?
-	CMD_REQUEST_ACTUAL_STATE,
-	CMD_REQUEST_DEBUG_LINES,
-    CMD_STEP_FORWARD_SIMULATION,
-    CMD_RESET_SIMULATION,
-    CMD_MAX_CLIENT_COMMANDS
-};
-
-enum EnumSharedMemoryServerStatus
-{
-	CMD_SHARED_MEMORY_NOT_INITIALIZED=0,
-	CMD_WAITING_FOR_CLIENT_COMMAND,
-	
-	//CMD_CLIENT_COMMAND_COMPLETED is a generic 'completed' status that doesn't need special handling on the client
-	CMD_CLIENT_COMMAND_COMPLETED,
-	//the server will skip unknown command and report a status 'CMD_UNKNOWN_COMMAND_FLUSHED'
-	CMD_UNKNOWN_COMMAND_FLUSHED,
-
-	CMD_URDF_LOADING_COMPLETED,
-	CMD_URDF_LOADING_FAILED,
-	CMD_BULLET_DATA_STREAM_RECEIVED_COMPLETED,
-	CMD_BULLET_DATA_STREAM_RECEIVED_FAILED,
-	CMD_BOX_COLLISION_SHAPE_CREATION_COMPLETED,
-	CMD_RIGID_BODY_CREATION_COMPLETED,
-	CMD_SET_JOINT_FEEDBACK_COMPLETED,
-	CMD_ACTUAL_STATE_UPDATE_COMPLETED,
-	CMD_ACTUAL_STATE_UPDATE_FAILED,
-	CMD_DEBUG_LINES_COMPLETED,
-	CMD_DEBUG_LINES_OVERFLOW_FAILED,
-	CMD_DESIRED_STATE_RECEIVED_COMPLETED,
-	CMD_STEP_FORWARD_SIMULATION_COMPLETED,
-	CMD_MAX_SERVER_COMMANDS
-};
+#define SHARED_MEMORY_MAX_STREAM_CHUNK_SIZE (256*1024)
 
 #define SHARED_MEMORY_SERVER_TEST_C
-#define MAX_DEGREE_OF_FREEDOM 256
+#define MAX_DEGREE_OF_FREEDOM 64
 #define MAX_NUM_SENSORS 256
 #define MAX_URDF_FILENAME_LENGTH 1024
 #define MAX_FILENAME_LENGTH MAX_URDF_FILENAME_LENGTH
+
+struct TmpFloat3 
+{
+    float m_x;
+    float m_y;
+    float m_z;
+};
+
+#ifdef _WIN32
+__inline
+#else
+inline
+#endif
+TmpFloat3 CreateTmpFloat3(float x, float y, float z) 
+{
+    TmpFloat3 tmp;
+    tmp.m_x = x;
+    tmp.m_y = y;
+    tmp.m_z = z;
+    return tmp;
+}
 
 enum EnumUrdfArgsUpdateFlags
 {
@@ -108,13 +87,13 @@ struct SetJointFeedbackArgs
 	int m_isEnabled;
 };
 
-//todo: discuss and decide about control mode and combinations
-enum {
-//    POSITION_CONTROL=0,
-    CONTROL_MODE_VELOCITY=0,
-    CONTROL_MODE_TORQUE,
-	CONTROL_MODE_POSITION_VELOCITY_PD,
+enum EnumInitPoseFlags
+{
+    INIT_POSE_HAS_INITIAL_POSITION=1,
+    INIT_POSE_HAS_INITIAL_ORIENTATION=2,
+    INIT_POSE_HAS_JOINT_STATE=4
 };
+
 
 ///InitPoseArgs is mainly to initialize (teleport) the robot in a particular position
 ///No motors or controls are needed to initialize the pose. It is similar to
@@ -130,11 +109,20 @@ struct InitPoseArgs
 struct RequestDebugLinesArgs
 {
 	int m_debugMode;
+    int m_startingLineIndex;
 };
 
 struct SendDebugLinesArgs
 {
+    int m_startingLineIndex;
 	int m_numDebugLines;
+    int m_numRemainingDebugLines;
+};
+
+struct PickBodyArgs
+{
+    double m_rayFromWorld[3];
+    double m_rayToWorld[3];
 };
 
 
@@ -198,6 +186,8 @@ struct SendActualStateArgs
 	int m_numDegreeOfFreedomQ;
 	int m_numDegreeOfFreedomU;
 
+    double m_rootLocalInertialFrame[7];
+    
 	  //actual state is only written by the server, read-only access by client is expected
     double m_actualStateQ[MAX_DEGREE_OF_FREEDOM];
     double m_actualStateQdot[MAX_DEGREE_OF_FREEDOM];
@@ -207,12 +197,25 @@ struct SendActualStateArgs
   
 };
 
+enum EnumSensorTypes
+{
+    SENSOR_FORCE_TORQUE=1,
+    SENSOR_IMU=2,
+};
+
 struct CreateSensorArgs
 {
     int m_bodyUniqueId;
     int m_numJointSensorChanges;
+    int m_sensorType[MAX_DEGREE_OF_FREEDOM];
+    
+///todo: clean up the duplication, make sure no-one else is using those members directly (use C-API header instead)
     int m_jointIndex[MAX_DEGREE_OF_FREEDOM];
     int m_enableJointForceSensor[MAX_DEGREE_OF_FREEDOM];
+
+    int m_linkIndex[MAX_DEGREE_OF_FREEDOM];
+    int m_enableSensor[MAX_DEGREE_OF_FREEDOM];
+    
 };
 
 typedef  struct SharedMemoryCommand SharedMemoryCommand_t;
@@ -221,7 +224,10 @@ enum EnumBoxShapeFlags
 {
     BOX_SHAPE_HAS_INITIAL_POSITION=1,
     BOX_SHAPE_HAS_INITIAL_ORIENTATION=2,
-    BOX_SHAPE_HAS_HALF_EXTENTS=4
+    BOX_SHAPE_HAS_HALF_EXTENTS=4,
+	BOX_SHAPE_HAS_MASS=8,
+	BOX_SHAPE_HAS_COLLISION_SHAPE_TYPE=16,
+	BOX_SHAPE_HAS_COLOR=32,
 };
 ///This command will be replaced to allow arbitrary collision shape types
 struct CreateBoxShapeArgs
@@ -230,8 +236,12 @@ struct CreateBoxShapeArgs
     double m_halfExtentsY;
     double m_halfExtentsZ;
 
+	double m_mass;
+	int m_collisionShapeType;//see SharedMemoryPublic.h
+
     double m_initialPosition[3];
 	double m_initialOrientation[4];
+	double m_colorRGBA[4];
 };
 
 struct SharedMemoryCommand
@@ -255,9 +265,14 @@ struct SharedMemoryCommand
         struct CreateSensorArgs m_createSensorArguments;
         struct CreateBoxShapeArgs m_createBoxShapeArguments;
 		struct RequestDebugLinesArgs m_requestDebugLinesArguments;
+		struct PickBodyArgs m_pickBodyArguments;
     };
 };
 
+struct RigidBodyCreateArgs
+{
+	int m_bodyUniqueId; 
+};
 
 struct SharedMemoryStatus
 {
@@ -271,26 +286,11 @@ struct SharedMemoryStatus
 		struct BulletDataStreamArgs	m_dataStreamArguments;
 		struct SendActualStateArgs m_sendActualStateArgs;
 		struct SendDebugLinesArgs m_sendDebugLinesArgs;
+		struct RigidBodyCreateArgs m_rigidBodyCreateArgs;
 	};
 };
 
 typedef  struct SharedMemoryStatus SharedMemoryStatus_t;
-
-enum JointInfoFlags
-{
-    JOINT_HAS_MOTORIZED_POWER=1,
-};
-struct b3JointInfo
-{
-        char* m_linkName;
-        char* m_jointName;
-        int m_jointType;
-        int m_qIndex;
-        int m_uIndex;
-    ///
-        int m_flags;
-};
-
 
 
 

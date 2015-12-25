@@ -1,9 +1,8 @@
 #ifndef SHARED_MEMORY_BLOCK_H
 #define SHARED_MEMORY_BLOCK_H
 
-#define SHARED_MEMORY_KEY 12347
 #define SHARED_MEMORY_MAGIC_NUMBER 64738
-#define SHARED_MEMORY_MAX_COMMANDS 32
+#define SHARED_MEMORY_MAX_COMMANDS 4
 #define SHARED_MEMORY_MAX_STREAM_CHUNK_SIZE (256*1024)
 
 #include "SharedMemoryCommands.h"
@@ -26,8 +25,10 @@ struct SharedMemoryBlock
 
 	//m_bulletStreamDataServerToClient is used to send (debug) data from server to client, for
 	//example to provide all details of a multibody including joint/link names, after loading a URDF file.
-	char    m_bulletStreamDataServerToClient[SHARED_MEMORY_MAX_STREAM_CHUNK_SIZE];
+	char    m_bulletStreamDataServerToClientRefactor[SHARED_MEMORY_MAX_STREAM_CHUNK_SIZE];
 };
+
+
 
 
 //http://stackoverflow.com/questions/24736304/unable-to-use-inline-in-declaration-get-error-c2054

@@ -19,7 +19,7 @@ subject to the following restrictions:
 bool useShadowMap=true;//false;//true;
 int shadowMapWidth=8192;
 int shadowMapHeight=8192;
-float shadowMapWorldSize=100;
+float shadowMapWorldSize=10;
 
 #define MAX_POINTS_IN_BATCH 1024
 #define MAX_LINES_IN_BATCH 1024
@@ -1409,10 +1409,10 @@ void GLInstancingRenderer::renderSceneInternal(int renderMode)
 	b3Matrix4x4Mul(depthProjectionMatrix,depthModelViewMatrix,depthMVP);
 
 	GLfloat biasMatrix[4][4]={
-			0.5, 0.0, 0.0, 0.0,
-			0.0, 0.5, 0.0, 0.0,
-			0.0, 0.0, 0.5, 0.0,
-			0.5, 0.5, 0.5, 1.0
+			{ 0.5, 0.0, 0.0, 0.0 },
+			{ 0.0, 0.5, 0.0, 0.0 },
+			{ 0.0, 0.0, 0.5, 0.0 },
+			{ 0.5, 0.5, 0.5, 1.0 }
 	};
 
 	GLfloat depthBiasMVP[4][4];
@@ -1667,6 +1667,11 @@ void GLInstancingRenderer::enableShadowMap()
 	glBindTexture(GL_TEXTURE_2D, m_data->m_shadowTexture);
 	//glBindTexture(GL_TEXTURE_2D, m_data->m_defaultTexturehandle);
 
+}
+
+void GLInstancingRenderer::clearZBuffer()
+{
+	glClear(GL_DEPTH_BUFFER_BIT);
 }
 
 int GLInstancingRenderer::getMaxShapeCapacity() const
