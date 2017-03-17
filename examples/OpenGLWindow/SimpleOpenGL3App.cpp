@@ -12,7 +12,11 @@
 #include "Win32OpenGLWindow.h"
 #else
 //let's cross the fingers it is Linux/X11
+#ifdef BT_USE_EGL
+#include "EGLOpenGLWindow.h"
+#else
 #include "X11OpenGLWindow.h"
+#endif //BT_USE_EGL
 #endif //_WIN32
 #endif//__APPLE__
 #include <stdio.h>
@@ -56,8 +60,11 @@ static void SimpleResizeCallback( float widthf, float heightf)
 {
 	int width = (int)widthf;
 	int height = (int)heightf;
-	gApp->m_instancingRenderer->resize(width,height);
-	gApp->m_primRenderer->setScreenSize(width,height);
+    if (gApp && gApp->m_instancingRenderer)
+        gApp->m_instancingRenderer->resize(width,height);
+
+    if (gApp && gApp->m_primRenderer)
+        gApp->m_primRenderer->setScreenSize(width,height);
 
 }
 
@@ -104,7 +111,7 @@ static GLuint BindFont(const CTexFont *_Font)
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return TexID;
@@ -115,6 +122,7 @@ extern unsigned char OpenSansData[];
 SimpleOpenGL3App::SimpleOpenGL3App(	const char* title, int width,int height, bool allowRetina)
 {
 	gApp = this;
+
 	m_data = new SimpleInternalData;
 	m_data->m_frameDumpPngFileName = 0;
 	m_data->m_renderTexture = 0;
@@ -123,6 +131,7 @@ SimpleOpenGL3App::SimpleOpenGL3App(	const char* title, int width,int height, boo
 	m_data->m_upAxis = 1;
 
 	m_window = new b3gDefaultOpenGLWindow();
+   
 	m_window->setAllowRetina(allowRetina);
 	
 	b3gWindowConstructionInfo ci;
@@ -141,36 +150,46 @@ SimpleOpenGL3App::SimpleOpenGL3App(	const char* title, int width,int height, boo
 					1.f);
 	
 	m_window->startRendering();
+    width = m_window->getWidth();
+    height = m_window->getHeight();
+    
 	b3Assert(glGetError() ==GL_NO_ERROR);
 
+#ifndef NO_GLEW
 #ifndef __APPLE__
 #ifndef _WIN32
-//some Linux implementations need the 'glewExperimental' to be true
+    //some Linux implementations need the 'glewExperimental' to be true
     glewExperimental = GL_TRUE;
-#endif
-
-
+#endif //_WIN32
+    
+    
     if (glewInit() != GLEW_OK)
         exit(1); // or handle the error in a nicer way
     if (!GLEW_VERSION_2_1)  // check that the machine supports the 2.1 API.
         exit(1); // or handle the error in a nicer way
-
-#endif
+    
+#endif //__APPLE__
+#endif //NO_GLEW
     glGetError();//don't remove this call, it is needed for Ubuntu
 
     b3Assert(glGetError() ==GL_NO_ERROR);
 
-	m_primRenderer = new GLPrimitiveRenderer(width,height);
 	m_parameterInterface = 0;
-
+    
     b3Assert(glGetError() ==GL_NO_ERROR);
 
-	m_instancingRenderer = new GLInstancingRenderer(128*1024,64*1024*1024);
-	m_renderer = m_instancingRenderer ;
-	m_instancingRenderer->init();
-	m_instancingRenderer->resize(width,height);
+	m_instancingRenderer = new GLInstancingRenderer(128*1024,128*1024*1024);
 
-	b3Assert(glGetError() ==GL_NO_ERROR);
+    m_primRenderer = new GLPrimitiveRenderer(width,height);
+    
+    m_renderer = m_instancingRenderer ;
+    m_window->setResizeCallback(SimpleResizeCallback);
+    
+    
+    m_instancingRenderer->init();
+	m_instancingRenderer->resize(width,height);
+    m_primRenderer->setScreenSize(width,height);
+    b3Assert(glGetError() ==GL_NO_ERROR);
 
 	m_instancingRenderer->InitShaders();
 
@@ -178,8 +197,7 @@ SimpleOpenGL3App::SimpleOpenGL3App(	const char* title, int width,int height, boo
 	m_window->setMouseButtonCallback(SimpleMouseButtonCallback);
     m_window->setKeyboardCallback(SimpleKeyboardCallback);
     m_window->setWheelCallback(SimpleWheelCallback);
-	m_window->setResizeCallback(SimpleResizeCallback);
-
+	
 	TwGenerateDefaultFonts();
 	m_data->m_fontTextureId = BindFont(g_DefaultNormalFont);
 	m_data->m_largeFontTextureId = BindFont(g_DefaultLargeFont);
@@ -219,7 +237,7 @@ struct sth_stash* SimpleOpenGL3App::getFontStash()
 
 void SimpleOpenGL3App::drawText3D( const char* txt, float worldPosX, float worldPosY, float worldPosZ, float size1)
 {
-
+	B3_PROFILE("SimpleOpenGL3App::drawText3D");
 	float viewMat[16];
 	float projMat[16];
 	CommonCameraInterface* cam = m_instancingRenderer->getActiveCamera();
@@ -262,6 +280,7 @@ void SimpleOpenGL3App::drawText3D( const char* txt, float worldPosX, float world
 		bool measureOnly = false;
 
 		float fontSize= 32;//64;//512;//128;
+		
 		sth_draw_text(m_data->m_fontStash,
                     m_data->m_droidRegular,fontSize,posX,posY,
 					txt,&dx, this->m_instancingRenderer->getScreenWidth(),this->m_instancingRenderer->getScreenHeight(),measureOnly,m_window->getRetinaScale());
@@ -312,10 +331,10 @@ void SimpleOpenGL3App::drawText3D( const char* txt, float worldPosX, float world
 						0,0,1,0,
 						0,0,0,1};
 				   PrimVertex vertexData[4] = {
-					{ PrimVec4(-1.f+2.f*x0/float(screenWidth), 1.f-2.f*y0/float(screenHeight), z, 1.f ), PrimVec4( color[0], color[1], color[2], color[3] ) ,PrimVec2(u0,v0)},
-					{ PrimVec4(-1.f+2.f*x0/float(screenWidth),  1.f-2.f*y1/float(screenHeight), z, 1.f ), PrimVec4( color[0], color[1], color[2], color[3] ) ,PrimVec2(u0,v1)},
-					{ PrimVec4( -1.f+2.f*x1/float(screenWidth),  1.f-2.f*y1/float(screenHeight), z, 1.f ), PrimVec4(color[0], color[1], color[2], color[3]) ,PrimVec2(u1,v1)},
-					{ PrimVec4( -1.f+2.f*x1/float(screenWidth), 1.f-2.f*y0/float(screenHeight), z, 1.f ), PrimVec4( color[0], color[1], color[2], color[3] ) ,PrimVec2(u1,v0)}
+					PrimVertex(PrimVec4(-1.f+2.f*x0/float(screenWidth), 1.f-2.f*y0/float(screenHeight), z, 1.f ), PrimVec4( color[0], color[1], color[2], color[3] ) ,PrimVec2(u0,v0)),
+					PrimVertex(PrimVec4(-1.f+2.f*x0/float(screenWidth),  1.f-2.f*y1/float(screenHeight), z, 1.f ), PrimVec4( color[0], color[1], color[2], color[3] ) ,PrimVec2(u0,v1)),
+					PrimVertex(PrimVec4( -1.f+2.f*x1/float(screenWidth),  1.f-2.f*y1/float(screenHeight), z, 1.f ), PrimVec4(color[0], color[1], color[2], color[3]) ,PrimVec2(u1,v1)),
+					PrimVertex(PrimVec4( -1.f+2.f*x1/float(screenWidth), 1.f-2.f*y0/float(screenHeight), z, 1.f ), PrimVec4( color[0], color[1], color[2], color[3] ) ,PrimVec2(u1,v0))
 				};
     
 				m_primRenderer->drawTexturedRect3D(vertexData[0],vertexData[1],vertexData[2],vertexData[3],identity,identity,false);
@@ -339,7 +358,7 @@ void SimpleOpenGL3App::drawText3D( const char* txt, float worldPosX, float world
 }
 
 
-void SimpleOpenGL3App::drawText( const char* txt, int posXi, int posYi)
+void SimpleOpenGL3App::drawText( const char* txt, int posXi, int posYi, float size)
 {
 
 	float posX = (float)posXi;
@@ -361,7 +380,7 @@ void SimpleOpenGL3App::drawText( const char* txt, int posXi, int posYi)
 	{
 		bool measureOnly = false;
 
-		float fontSize= 64;//512;//128;
+		float fontSize= 64*size;//512;//128;
 		sth_draw_text(m_data->m_fontStash,
                     m_data->m_droidRegular,fontSize,posX,posY,
 					txt,&dx, this->m_instancingRenderer->getScreenWidth(),
@@ -413,6 +432,18 @@ void SimpleOpenGL3App::drawText( const char* txt, int posXi, int posYi)
 
 	glDisable(GL_BLEND);
 }
+
+
+void SimpleOpenGL3App::drawTexturedRect(float x0, float y0, float x1, float y1, float color[4], float u0,float v0, float u1, float v1, int useRGBA)
+{
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	m_primRenderer->drawTexturedRect(x0,y0,x1,y1,color,u0,v0,u1,v1,useRGBA);
+	glDisable(GL_BLEND);
+}
+
+
 
 struct GfxVertex
 	{
@@ -627,11 +658,38 @@ void SimpleOpenGL3App::setBackgroundColor(float red, float green, float blue)
 
 SimpleOpenGL3App::~SimpleOpenGL3App()
 {
+	
+	delete m_instancingRenderer;
 	delete m_primRenderer ;
-
+	sth_delete(m_data->m_fontStash);
+	delete m_data->m_renderCallbacks;
+	TwDeleteDefaultFonts();
 	m_window->closeWindow();
+	
 	delete m_window;
 	delete m_data ;
+}
+
+void SimpleOpenGL3App::getScreenPixels(unsigned char* rgbaBuffer, int bufferSizeInBytes, float* depthBuffer, int depthBufferSizeInBytes)
+{
+    
+    int width = (int)m_window->getRetinaScale()*m_instancingRenderer->getScreenWidth();
+    int height = (int)m_window->getRetinaScale()*m_instancingRenderer->getScreenHeight();
+    if ((width*height*4) == bufferSizeInBytes)
+    {
+        glReadPixels(0,0,width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgbaBuffer);
+		int glstat;
+		glstat = glGetError();
+		b3Assert(glstat==GL_NO_ERROR);
+    }
+    if ((width*height*sizeof(float)) == depthBufferSizeInBytes)
+    {
+        glReadPixels(0,0,width, height, GL_DEPTH_COMPONENT, GL_FLOAT, depthBuffer);
+		int glstat;
+		glstat = glGetError();
+		b3Assert(glstat==GL_NO_ERROR);
+    }
+    
 }
 
 //#define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -702,11 +760,13 @@ static void writeTextureToFile(int textureWidth, int textureHeight, const char* 
 
 void SimpleOpenGL3App::swapBuffer()
 {
-	m_window->endRendering();
+
 	if (m_data->m_frameDumpPngFileName)
     {
-        writeTextureToFile((int)m_window->getRetinaScale()*m_instancingRenderer->getScreenWidth(),
-                          (int) m_window->getRetinaScale()*this->m_instancingRenderer->getScreenHeight(),m_data->m_frameDumpPngFileName,
+        int width = (int)m_window->getRetinaScale()*m_instancingRenderer->getScreenWidth();
+        int height = (int) m_window->getRetinaScale()*this->m_instancingRenderer->getScreenHeight();
+        writeTextureToFile(width,
+                          height,m_data->m_frameDumpPngFileName,
                           m_data->m_ffmpegFile);
         m_data->m_renderTexture->disable();
         if (m_data->m_ffmpegFile==0)
@@ -714,23 +774,29 @@ void SimpleOpenGL3App::swapBuffer()
 			m_data->m_frameDumpPngFileName = 0;
         }
     }
+	m_window->endRendering();
 	m_window->startRendering();
 }
 
 // see also http://blog.mmacklin.com/2013/06/11/real-time-video-capture-with-ffmpeg/
 void SimpleOpenGL3App::dumpFramesToVideo(const char* mp4FileName)
 {
-    int width = (int)m_window->getRetinaScale()*m_instancingRenderer->getScreenWidth();
-    int height = (int)m_window->getRetinaScale()*m_instancingRenderer->getScreenHeight();
-    char cmd[8192];
+	if (mp4FileName)
+	{
+		int width = (int)m_window->getRetinaScale()*m_instancingRenderer->getScreenWidth();
+		int height = (int)m_window->getRetinaScale()*m_instancingRenderer->getScreenHeight();
+		char cmd[8192];
 
 #ifdef _WIN32
-    sprintf(cmd, "ffmpeg -r 60 -f rawvideo -pix_fmt rgba   -s %dx%d -i - "
-    		"-y -crf 0  -b:v 1500000 -an -vcodec h264 -vf vflip  %s", width, height, mp4FileName);
+	sprintf(cmd, "ffmpeg -r 60 -f rawvideo -pix_fmt rgba -s %dx%d -i - "
+		"-threads 0 -y -b:v 50000k  -t 20 -c:v libx264 -preset slow -crf 22 -an   -pix_fmt yuv420p -vf vflip %s", width, height, mp4FileName);
+
+    //sprintf(cmd, "ffmpeg -r 60 -f rawvideo -pix_fmt rgba   -s %dx%d -i - "
+    //		"-y -crf 0  -b:v 1500000 -an -vcodec h264 -vf vflip  %s", width, height, mp4FileName);
 #else
    
    sprintf(cmd, "ffmpeg -r 60 -f rawvideo -pix_fmt rgba -s %dx%d -i - "
-    		"-threads 0 -y -crf 0 -b 50000k -vf vflip %s", width, height, mp4FileName);
+    		"-threads 0 -y -b 50000k  -t 20 -c:v libx264 -preset slow -crf 22 -an   -pix_fmt yuv420p -vf vflip %s", width, height, mp4FileName);
 #endif
     
     //sprintf(cmd,"ffmpeg -r 60 -f rawvideo -pix_fmt rgba -s %dx%d -i - "
@@ -739,15 +805,25 @@ void SimpleOpenGL3App::dumpFramesToVideo(const char* mp4FileName)
     //              sprintf(cmd,"ffmpeg -r 60 -f rawvideo -pix_fmt rgba -s %dx%d -i - "
     //              "-threads 0 -preset fast -y -crf 21 -vf vflip %s",width,height,mp4FileName);
 
-    if (m_data->m_ffmpegFile)
-    {
-        pclose(m_data->m_ffmpegFile);
-    }
-	if (mp4FileName)
-	{
-		m_data->m_ffmpegFile = popen(cmd, "w");
+		if (m_data->m_ffmpegFile)
+		{
+			pclose(m_data->m_ffmpegFile);
+		}
+		if (mp4FileName)
+		{
+			m_data->m_ffmpegFile = popen(cmd, "w");
 
-		m_data->m_frameDumpPngFileName = mp4FileName;
+			m_data->m_frameDumpPngFileName = mp4FileName;
+		}
+	} else
+	{
+		if (m_data->m_ffmpegFile)
+		{
+			fflush(m_data->m_ffmpegFile);
+			pclose(m_data->m_ffmpegFile);
+			m_data->m_frameDumpPngFileName = 0;
+		}
+		m_data->m_ffmpegFile = 0;
 	}
 }
 void SimpleOpenGL3App::dumpNextFrameToPng(const char* filename)
@@ -775,7 +851,7 @@ void SimpleOpenGL3App::dumpNextFrameToPng(const char* filename)
                          , 0,GL_RGBA, GL_FLOAT, 0);
 
             glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
             //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
             //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 

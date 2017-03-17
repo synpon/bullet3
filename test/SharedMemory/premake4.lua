@@ -17,15 +17,133 @@ project ("Test_SharedMemoryPhysicsClient")
 			"../../examples/SharedMemory/PhysicsClient.h",
 			"../../examples/SharedMemory/PhysicsClientSharedMemory.cpp",
 			"../../examples/SharedMemory/PhysicsClientSharedMemory.h",
+			"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.cpp",
+			"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.h",
 			"../../examples/SharedMemory/PhysicsClientC_API.cpp",
 			"../../examples/SharedMemory/PhysicsClientC_API.h",
 			"../../examples/SharedMemory/Win32SharedMemory.cpp",
 			"../../examples/SharedMemory/Win32SharedMemory.h",
 			"../../examples/SharedMemory/PosixSharedMemory.cpp",
 			"../../examples/SharedMemory/PosixSharedMemory.h",
+			"../../examples/Utils/b3Clock.cpp",
+			"../../examples/Utils/b3Clock.h",
 			"../../examples/Utils/b3ResourcePath.cpp",
 			"../../examples/Utils/b3ResourcePath.h",
 		}
+
+project ("Test_PhysicsClientUDP")
+
+                language "C++"
+                kind "ConsoleApp"
+
+                includedirs {
+                "../../src", 
+                "../../examples",
+                "../../examples/ThirdPartyLibs/enet/include"
+                }
+                links {
+												"enet",
+                        "BulletFileLoader",
+                        "Bullet3Common",
+                        "LinearMath"
+                }
+		if os.is("Windows") then
+                	defines { "WIN32" }
+        	        links {"Ws2_32","Winmm"}
+	        end
+		if os.is("Linux") then
+			links {"pthread"}
+		end
+
+                defines {"PHYSICS_UDP"}
+
+                files {
+									"test.c",
+									"../../examples/SharedMemory/PhysicsClient.cpp",
+									"../../examples/SharedMemory/PhysicsClient.h",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory.cpp",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory.h",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.cpp",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.h",
+									"../../examples/SharedMemory/PhysicsClientUDP.cpp",
+									"../../examples/SharedMemory/PhysicsClientUDP.h",
+									"../../examples/SharedMemory/PhysicsClientUDP_C_API.cpp",
+									"../../examples/SharedMemory/PhysicsClientUDP_C_API.h",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.h",	
+									"../../examples/SharedMemory/PhysicsClientC_API.cpp",
+									"../../examples/SharedMemory/PhysicsClientC_API.h",
+									"../../examples/SharedMemory/Win32SharedMemory.cpp",
+									"../../examples/SharedMemory/Win32SharedMemory.h",
+									"../../examples/SharedMemory/PosixSharedMemory.cpp",
+									"../../examples/SharedMemory/PosixSharedMemory.h",
+									"../../examples/Utils/b3ResourcePath.cpp",
+									"../../examples/Utils/b3ResourcePath.h",
+									"../../examples/SharedMemory/PhysicsDirect.cpp",
+									"../../examples/Utils/b3Clock.cpp",
+									"../../examples/MultiThreading/b3PosixThreadSupport.cpp",
+									"../../examples/MultiThreading/b3Win32ThreadSupport.cpp",
+									"../../examples/MultiThreading/b3ThreadSupportInterface.cpp",
+            }
+
+
+project ("Test_PhysicsClientTCP")
+
+                language "C++"
+                kind "ConsoleApp"
+
+                includedirs {
+                "../../src", 
+                "../../examples",
+                "../../examples/ThirdPartyLibs/clsocket/src"
+                }
+                links {
+												"clsocket",
+                        "BulletFileLoader",
+                        "Bullet3Common",
+                        "LinearMath"
+                }
+		if os.is("Windows") then
+                	defines { "WIN32" }
+        	        links {"Ws2_32","Winmm"}
+	        end
+
+		if os.is("Windows") then
+                	defines { "WIN32","_WINSOCK_DEPRECATED_NO_WARNINGS" }
+                	end
+                if os.is("Linux") then
+                 defines {"_LINUX"}
+                end
+                if os.is("MacOSX") then
+                 defines {"_DARWIN"}
+                end
+
+                defines {"PHYSICS_TCP"}
+
+                files {
+									"test.c",
+									"../../examples/SharedMemory/PhysicsClient.cpp",
+									"../../examples/SharedMemory/PhysicsClient.h",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory.cpp",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory.h",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.cpp",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.h",
+									"../../examples/SharedMemory/PhysicsClientTCP.cpp",
+									"../../examples/SharedMemory/PhysicsClientTCP.h",
+									"../../examples/SharedMemory/PhysicsClientTCP_C_API.cpp",
+									"../../examples/SharedMemory/PhysicsClientTCP_C_API.h",
+									"../../examples/SharedMemory/PhysicsClientSharedMemory_C_API.h",	
+									"../../examples/SharedMemory/PhysicsClientC_API.cpp",
+									"../../examples/SharedMemory/PhysicsClientC_API.h",
+									"../../examples/SharedMemory/Win32SharedMemory.cpp",
+									"../../examples/SharedMemory/Win32SharedMemory.h",
+									"../../examples/SharedMemory/PosixSharedMemory.cpp",
+									"../../examples/SharedMemory/PosixSharedMemory.h",
+									"../../examples/Utils/b3ResourcePath.cpp",
+									"../../examples/Utils/b3ResourcePath.h",
+									"../../examples/SharedMemory/PhysicsDirect.cpp",
+									"../../examples/Utils/b3Clock.cpp",
+            }
+
 		
 project ("Test_PhysicsServerLoopBack")
 
@@ -36,16 +154,21 @@ project ("Test_PhysicsServerLoopBack")
 		"../../examples/ThirdPartyLibs"}
 		defines {"PHYSICS_LOOP_BACK"}
 		links {
+			"BulletInverseDynamicsUtils",
+			"BulletInverseDynamics",
 			"BulletFileLoader",
 			"BulletWorldImporter",
 			"Bullet3Common",
 			"BulletDynamics", 
 			"BulletCollision", 
+			"BussIK",
 			"LinearMath"
 		}
 			
 		files {
 			"test.c",
+			"../../examples/SharedMemory/IKTrajectoryHelper.cpp",
+			"../../examples/SharedMemory/IKTrajectoryHelper.h",
 			"../../examples/SharedMemory/PhysicsClient.cpp",
 			"../../examples/SharedMemory/PhysicsClient.h",
 			"../../examples/SharedMemory/PhysicsServer.cpp",
@@ -66,8 +189,21 @@ project ("Test_PhysicsServerLoopBack")
 			"../../examples/SharedMemory/Win32SharedMemory.h",
 			"../../examples/SharedMemory/PosixSharedMemory.cpp",
 			"../../examples/SharedMemory/PosixSharedMemory.h",
+			"../../examples/SharedMemory/TinyRendererVisualShapeConverter.cpp",
+			"../../examples/SharedMemory/TinyRendererVisualShapeConverter.h",
+			"../../examples/OpenGLWindow/SimpleCamera.cpp",
+			"../../examples/OpenGLWindow/SimpleCamera.h",
+			"../../examples/TinyRenderer/geometry.cpp",
+			"../../examples/TinyRenderer/model.cpp",
+			"../../examples/TinyRenderer/tgaimage.cpp",
+			"../../examples/TinyRenderer/our_gl.cpp",
+			"../../examples/TinyRenderer/TinyRenderer.cpp",
 			"../../examples/Utils/b3ResourcePath.cpp",
 			"../../examples/Utils/b3ResourcePath.h",
+			"../../examples/Utils/RobotLoggingUtil.cpp",
+			"../../examples/Utils/RobotLoggingUtil.h",
+			"../../examples/Utils/b3Clock.cpp",
+			"../../examples/Utils/b3Clock.h",
 			"../../examples/ThirdPartyLibs/tinyxml/tinystr.cpp",
 			"../../examples/ThirdPartyLibs/tinyxml/tinyxml.cpp",
 			"../../examples/ThirdPartyLibs/tinyxml/tinyxmlerror.cpp",
@@ -77,12 +213,15 @@ project ("Test_PhysicsServerLoopBack")
 			"../../examples/Importers/ImportColladaDemo/LoadMeshFromCollada.cpp",
 			"../../examples/Importers/ImportObjDemo/LoadMeshFromObj.cpp",
 			"../../examples/Importers/ImportObjDemo/Wavefront2GLInstanceGraphicsShape.cpp",
+			"../../examples/Importers/ImportMJCFDemo/BulletMJCFImporter.cpp",
 			"../../examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp",
 			"../../examples/Importers/ImportURDFDemo/MyMultiBodyCreator.cpp",
 			"../../examples/Importers/ImportURDFDemo/URDF2Bullet.cpp",
 			"../../examples/Importers/ImportURDFDemo/UrdfParser.cpp",
 			"../../examples/Importers/ImportURDFDemo/urdfStringSplit.cpp",
-		}
+			"../../examples/Importers/ImportMeshUtility/b3ImportMeshUtility.cpp",
+                        "../../examples/ThirdPartyLibs/stb_image/stb_image.cpp",
+	}
 		
 		project ("Test_PhysicsServerDirect")
 
@@ -93,16 +232,21 @@ project ("Test_PhysicsServerLoopBack")
 		"../../examples/ThirdPartyLibs"}
 		defines {"PHYSICS_SERVER_DIRECT"}
 		links {
+			"BulletInverseDynamicsUtils",
+			"BulletInverseDynamics",
 			"BulletFileLoader",
 			"BulletWorldImporter",
 			"Bullet3Common",
 			"BulletDynamics", 
-			"BulletCollision", 
+			"BulletCollision",
+			"BussIK",
 			"LinearMath"
 		}
 			
 		files {
 			"test.c",
+			"../../examples/SharedMemory/IKTrajectoryHelper.cpp",
+			"../../examples/SharedMemory/IKTrajectoryHelper.h",
 			"../../examples/SharedMemory/PhysicsClient.cpp",
 			"../../examples/SharedMemory/PhysicsClient.h",
 			"../../examples/SharedMemory/PhysicsServer.cpp",
@@ -123,8 +267,21 @@ project ("Test_PhysicsServerLoopBack")
 			"../../examples/SharedMemory/Win32SharedMemory.h",
 			"../../examples/SharedMemory/PosixSharedMemory.cpp",
 			"../../examples/SharedMemory/PosixSharedMemory.h",
+			"../../examples/SharedMemory/TinyRendererVisualShapeConverter.cpp",
+			"../../examples/SharedMemory/TinyRendererVisualShapeConverter.h",
+			"../../examples/TinyRenderer/geometry.cpp",
+			"../../examples/TinyRenderer/model.cpp",
+			"../../examples/TinyRenderer/tgaimage.cpp",
+			"../../examples/TinyRenderer/our_gl.cpp",
+			"../../examples/TinyRenderer/TinyRenderer.cpp",
+			"../../examples/OpenGLWindow/SimpleCamera.cpp",
+			"../../examples/OpenGLWindow/SimpleCamera.h",
 			"../../examples/Utils/b3ResourcePath.cpp",
 			"../../examples/Utils/b3ResourcePath.h",
+			"../../examples/Utils/RobotLoggingUtil.cpp",
+			"../../examples/Utils/RobotLoggingUtil.h",
+			"../../examples/Utils/b3Clock.cpp",
+			"../../examples/Utils/b3Clock.h",
 			"../../examples/ThirdPartyLibs/tinyxml/tinystr.cpp",
 			"../../examples/ThirdPartyLibs/tinyxml/tinyxml.cpp",
 			"../../examples/ThirdPartyLibs/tinyxml/tinyxmlerror.cpp",
@@ -134,11 +291,14 @@ project ("Test_PhysicsServerLoopBack")
 			"../../examples/Importers/ImportColladaDemo/LoadMeshFromCollada.cpp",
 			"../../examples/Importers/ImportObjDemo/LoadMeshFromObj.cpp",
 			"../../examples/Importers/ImportObjDemo/Wavefront2GLInstanceGraphicsShape.cpp",
+			"../../examples/Importers/ImportMJCFDemo/BulletMJCFImporter.cpp",
 			"../../examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp",
 			"../../examples/Importers/ImportURDFDemo/MyMultiBodyCreator.cpp",
 			"../../examples/Importers/ImportURDFDemo/URDF2Bullet.cpp",
 			"../../examples/Importers/ImportURDFDemo/UrdfParser.cpp",
 			"../../examples/Importers/ImportURDFDemo/urdfStringSplit.cpp",
+			"../../examples/Importers/ImportMeshUtility/b3ImportMeshUtility.cpp",
+                        "../../examples/ThirdPartyLibs/stb_image/stb_image.cpp",     	
 		}
 		
 
@@ -161,7 +321,7 @@ project ("Test_PhysicsServerInProcessExampleBrowser")
 --		}
 	hasCL = findOpenCL("clew")
 
-	links{"BulletExampleBrowserLib","gwen", "OpenGL_Window","BulletSoftBody", "BulletInverseDynamicsUtils", "BulletInverseDynamics", "BulletDynamics","BulletCollision","LinearMath","Bullet3Common"}
+	links{"BulletExampleBrowserLib","gwen", "OpenGL_Window","BulletFileLoader","BulletWorldImporter","BulletSoftBody", "BulletInverseDynamicsUtils", "BulletInverseDynamics", "BulletDynamics","BulletCollision","LinearMath","BussIK","Bullet3Common"}
 	initOpenGL()
 	initGlew()
 
@@ -188,8 +348,64 @@ project ("Test_PhysicsServerInProcessExampleBrowser")
 
 		files {
 			"test.c",
-			"../../examples/ExampleBrowser/ExampleEntries.cpp",
-			}
+			"../../examples/SharedMemory/IKTrajectoryHelper.cpp",
+			"../../examples/SharedMemory/IKTrajectoryHelper.h",
+			"../../examples/ExampleBrowser/InProcessExampleBrowser.cpp",
+			"../../examples/SharedMemory/InProcessMemory.cpp",
+			"../../examples/SharedMemory/PhysicsClient.cpp",
+			"../../examples/SharedMemory/PhysicsClient.h",
+			"../../examples/SharedMemory/PhysicsServer.cpp",
+			"../../examples/SharedMemory/PhysicsServer.h",
+			"../../examples/SharedMemory/PhysicsServerExample.cpp",
+			"../../examples/SharedMemory/SharedMemoryInProcessPhysicsC_API.cpp",
+			"../../examples/SharedMemory/PhysicsServerSharedMemory.cpp",
+			"../../examples/SharedMemory/PhysicsServerSharedMemory.h",
+			"../../examples/SharedMemory/PhysicsDirect.cpp",
+			"../../examples/SharedMemory/PhysicsDirect.h",
+			"../../examples/SharedMemory/PhysicsDirectC_API.cpp",
+			"../../examples/SharedMemory/PhysicsDirectC_API.h",
+			"../../examples/SharedMemory/PhysicsServerCommandProcessor.cpp",
+			"../../examples/SharedMemory/PhysicsServerCommandProcessor.h",
+			"../../examples/SharedMemory/PhysicsClientSharedMemory.cpp",
+			"../../examples/SharedMemory/PhysicsClientSharedMemory.h",
+			"../../examples/SharedMemory/PhysicsClientC_API.cpp",
+			"../../examples/SharedMemory/PhysicsClientC_API.h",
+			"../../examples/SharedMemory/Win32SharedMemory.cpp",
+			"../../examples/SharedMemory/Win32SharedMemory.h",
+			"../../examples/SharedMemory/PosixSharedMemory.cpp",
+			"../../examples/SharedMemory/PosixSharedMemory.h",
+			"../../examples/SharedMemory/TinyRendererVisualShapeConverter.cpp",
+			"../../examples/SharedMemory/TinyRendererVisualShapeConverter.h",
+			"../../examples/TinyRenderer/geometry.cpp",
+			"../../examples/TinyRenderer/model.cpp",
+			"../../examples/TinyRenderer/tgaimage.cpp",
+			"../../examples/TinyRenderer/our_gl.cpp",
+			"../../examples/TinyRenderer/TinyRenderer.cpp",
+			"../../examples/Utils/b3ResourcePath.cpp",
+			"../../examples/Utils/b3ResourcePath.h",
+			"../../examples/Utils/RobotLoggingUtil.cpp",
+			"../../examples/Utils/RobotLoggingUtil.h",
+			"../../examples/ThirdPartyLibs/tinyxml/tinystr.cpp",
+			"../../examples/ThirdPartyLibs/tinyxml/tinyxml.cpp",
+			"../../examples/ThirdPartyLibs/tinyxml/tinyxmlerror.cpp",
+			"../../examples/ThirdPartyLibs/tinyxml/tinyxmlparser.cpp",
+			"../../examples/ThirdPartyLibs/Wavefront/tiny_obj_loader.cpp",
+			"../../examples/ThirdPartyLibs/Wavefront/tiny_obj_loader.h",
+			"../../examples/Importers/ImportColladaDemo/LoadMeshFromCollada.cpp",
+			"../../examples/Importers/ImportObjDemo/LoadMeshFromObj.cpp",
+			"../../examples/Importers/ImportObjDemo/Wavefront2GLInstanceGraphicsShape.cpp",
+			"../../examples/Importers/ImportMJCFDemo/BulletMJCFImporter.cpp",
+			"../../examples/Importers/ImportURDFDemo/BulletUrdfImporter.cpp",
+			"../../examples/Importers/ImportURDFDemo/MyMultiBodyCreator.cpp",
+			"../../examples/Importers/ImportURDFDemo/URDF2Bullet.cpp",
+			"../../examples/Importers/ImportURDFDemo/UrdfParser.cpp",
+			"../../examples/Importers/ImportURDFDemo/urdfStringSplit.cpp",
+			"../../examples/MultiThreading/b3PosixThreadSupport.cpp",
+			"../../examples/MultiThreading/b3Win32ThreadSupport.cpp",
+			"../../examples/MultiThreading/b3ThreadSupportInterface.cpp",
+			"../../examples/Importers/ImportMeshUtility/b3ImportMeshUtility.cpp",
+			"../../examples/ThirdPartyLibs/stb_image/stb_image.cpp",
+	}
 	if os.is("Linux") then
        		initX11()
 	end

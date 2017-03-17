@@ -7,7 +7,7 @@
 #include "../CommonInterfaces/CommonMultiBodyBase.h"
 #include "../Utils/b3ResourcePath.h"
 
-static btScalar radius(0.2);
+//static btScalar radius(0.2);
 
 struct MultiBodySoftContact : public CommonMultiBodyBase
 {
@@ -36,7 +36,6 @@ public:
 
 };
 
-extern ContactAddedCallback		gContactAddedCallback;
 
 
 MultiBodySoftContact::MultiBodySoftContact(struct GUIHelperInterface* helper)
@@ -47,18 +46,7 @@ m_once(true)
 
 MultiBodySoftContact::~MultiBodySoftContact()
 {
-    gContactAddedCallback = 0;
-}
-
-
-static bool btMultiBodySoftContactCallback(btManifoldPoint& cp,	const btCollisionObjectWrapper* colObj0Wrap,int partId0,int index0,const btCollisionObjectWrapper* colObj1Wrap,int partId1,int index1)
-{
-    cp.m_contactCFM = 0.3;
-	cp.m_contactERP = 0.2;
-	cp.m_contactPointFlags |= BT_CONTACT_FLAG_HAS_CONTACT_CFM;
-    cp.m_contactPointFlags |= BT_CONTACT_FLAG_HAS_CONTACT_ERP;
-	return true; 
-
+    
 }
 
 
@@ -66,7 +54,7 @@ static bool btMultiBodySoftContactCallback(btManifoldPoint& cp,	const btCollisio
 
 void MultiBodySoftContact::initPhysics()
 {
-	  gContactAddedCallback = btMultiBodySoftContactCallback;
+	  
     int upAxis = 2;
 
 	m_guiHelper->setUpAxis(upAxis);
@@ -109,12 +97,13 @@ void MultiBodySoftContact::initPhysics()
 			start.setOrigin(groundOrigin);
 		//	start.setRotation(groundOrn);
             btRigidBody* body =  createRigidBody(0,start,box);
+            
+            //setContactStiffnessAndDamping will enable compliant rigid body contact
+            body->setContactStiffnessAndDamping(300,10);
             btVector4 color = colors[curColor];
 			curColor++;
 			curColor&=3;
             m_guiHelper->createRigidBodyGraphicsObject(body,color);
-			int flags = body->getCollisionFlags();
-			body->setCollisionFlags(flags|btCollisionObject::CF_CUSTOM_MATERIAL_CALLBACK);
 
         }
 
@@ -137,8 +126,8 @@ void MultiBodySoftContact::initPhysics()
 		col->setCollisionShape(childShape);
 		pMultiBody->setBaseCollider(col);
 			bool isDynamic = (mass > 0 && !isFixed);
-		short collisionFilterGroup = isDynamic? short(btBroadphaseProxy::DefaultFilter) : short(btBroadphaseProxy::StaticFilter);
-		short collisionFilterMask = isDynamic? 	short(btBroadphaseProxy::AllFilter) : 	short(btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter);
+		int collisionFilterGroup = isDynamic? int(btBroadphaseProxy::DefaultFilter) : int(btBroadphaseProxy::StaticFilter);
+		int collisionFilterMask = isDynamic? 	int(btBroadphaseProxy::AllFilter) : 	int(btBroadphaseProxy::AllFilter ^ btBroadphaseProxy::StaticFilter);
 
         m_dynamicsWorld->addCollisionObject(col,collisionFilterGroup,collisionFilterMask);//, 2,1+2);
 
